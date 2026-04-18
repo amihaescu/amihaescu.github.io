@@ -1,4 +1,4 @@
-# andrei-mihaescu.github.io
+# amihaescu.github.io
 
 Personal website built with Jekyll, hosted on GitHub Pages.
 
