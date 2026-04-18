@@ -1,0 +1,10 @@
+<nav>
+  <a href="{{ '/' | relative_url }}" class="nav-brand">Andrei Mihaescu</a>
+  <ul class="nav-links">
+    <li><a href="{{ '/#about' | relative_url }}" {% if page.url == '/' %}class="active"{% endif %}>About</a></li>
+    <li><a href="{{ '/#experience' | relative_url }}">Experience</a></li>
+    <li><a href="{{ '/writing/' | relative_url }}" {% if page.url contains '/writing/' %}class="active"{% endif %}>Writing</a></li>
+    <li><a href="{{ '/#education' | relative_url }}">Education</a></li>
+    <li><a href="{{ '/#contact' | relative_url }}">Contact</a></li>
+  </ul>
+</nav>

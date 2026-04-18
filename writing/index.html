@@ -1,0 +1,31 @@
+---
+layout: default
+title: Writing
+permalink: /writing/
+---
+
+<div class="writing-page">
+  <div class="writing-page-header">
+    <div class="section-number" style="margin-bottom: 0.5rem;">Writing</div>
+    <h1>Articles</h1>
+  </div>
+
+  {% if site.posts.size > 0 %}
+  <div class="articles-grid">
+    {% for post in site.posts %}
+    <a href="{{ post.url | relative_url }}" class="article-card">
+      {% if post.category %}<div class="article-tag">{{ post.category }}</div>{% endif %}
+      <div class="article-title">{{ post.title }}</div>
+      {% if post.excerpt %}<p class="article-excerpt">{{ post.excerpt | strip_html | truncate: 140 }}</p>{% endif %}
+      <div class="article-footer">
+        <span>{{ post.date | date: "%b %-d, %Y" }}</span>
+        {% if post.read_time %}<span>{{ post.read_time }} min read</span>{% endif %}
+        <span class="article-read-more">&rarr;</span>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p style="color: var(--ink-muted); font-weight: 300;">Articles coming soon.</p>
+  {% endif %}
+</div>

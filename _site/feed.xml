@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.10.0">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2026-04-18T18:31:49+03:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Andrei Mihaescu</title><subtitle>Staff Software Engineer — full-stack, distributed systems, cloud-native</subtitle><author><name>Andrei Mihaescu</name><email>andrei.mihaescu91@gmail.com</email></author><entry><title type="html">Async-first collaboration across time zones — what actually works</title><link href="http://localhost:4000/writing/2025/async-first-collaboration/" rel="alternate" type="text/html" title="Async-first collaboration across time zones — what actually works" /><published>2025-02-20T00:00:00+02:00</published><updated>2025-02-20T00:00:00+02:00</updated><id>http://localhost:4000/writing/2025/async-first-collaboration</id><content type="html" xml:base="http://localhost:4000/writing/2025/async-first-collaboration/"><![CDATA[<p>Remote work gets easier once you stop trying to replicate the office online and start designing for async by default. Here are the patterns that have genuinely made a difference across several distributed teams.</p>
+
+<h2 id="default-to-writing-not-meetings">Default to writing, not meetings</h2>
+
+<p>The instinct when you’re blocked is to ping someone. Resist it. Write the question down first — clearly enough that the person can answer asynchronously, ideally with enough context that they can answer <em>completely</em> without a follow-up round trip.</p>
+
+<p>This sounds obvious but it changes the texture of daily work. A well-written question gets a well-considered answer. A Slack ping at 9am your time interrupts someone mid-morning across the Atlantic.</p>
+
+<p>The byproduct is a written record. In six months, when a new teammate asks why the service is designed the way it is, the answer is already in Confluence or Notion rather than trapped in someone’s memory.</p>
+
+<h2 id="decision-logs--decision-meetings">Decision logs &gt; decision meetings</h2>
+
+<p>For any non-trivial decision — architecture choices, API contracts, tech debt prioritisation — write a lightweight decision record before calling a meeting. Include the context, the options considered, and your recommendation.</p>
+
+<p>Distribute it 24 hours ahead. By the time the meeting happens (if you need one at all), everyone has had time to form an opinion, and you’re resolving disagreements rather than orienting people.</p>
+
+<p>At Cisco and Dell, this pattern alone cut the average meeting from 60 minutes to 30.</p>
+
+<h2 id="be-explicit-about-availability">Be explicit about availability</h2>
+
+<p>Distributed teams fail when people treat async communication as synchronous but slower. Set clear expectations:</p>
+
+<ul>
+  <li>Block focus time on your calendar and treat it as real</li>
+  <li>Use Slack status to indicate when you’re in heads-down mode</li>
+  <li>Set explicit response-time expectations for different channels (Slack = same day, email = 48h, Jira comment = next sprint cycle)</li>
+</ul>
+
+<p>When everyone knows the norms, nobody reads silence as disengagement.</p>
+
+<h2 id="over-document-the-why">Over-document the “why”</h2>
+
+<p>Code explains <em>what</em>. Comments explain <em>how</em>. Neither explains <em>why</em> — and the why is what your future teammates (and future you) will desperately want when they’re debugging something at 11pm.</p>
+
+<p>Document the constraints that shaped a decision. “We used polling here instead of webhooks because the third-party API doesn’t support them” is more valuable than any amount of inline code comments.</p>
+
+<h2 id="the-tools-that-actually-matter">The tools that actually matter</h2>
+
+<p>After trying most of them: <strong>Notion or Confluence</strong> for persistent docs, <strong>Linear or Jira</strong> for tickets, <strong>Slack with strict channel discipline</strong> for communication, and <strong>Loom</strong> for walkthroughs that would take four paragraphs to explain in text.</p>
+
+<p>The tool matters far less than the discipline around it. A consistent Slack channel taxonomy beats a perfectly configured async tool that nobody uses the same way.</p>]]></content><author><name>Andrei Mihaescu</name><email>andrei.mihaescu91@gmail.com</email></author><category term="Remote Work" /><summary type="html"><![CDATA[Practical patterns from years working in globally distributed teams: communication norms, documentation habits, and the tools that reduce friction without adding ceremony.]]></summary></entry><entry><title type="html">Reducing memory footprint by 6x — a VisualVM deep dive</title><link href="http://localhost:4000/writing/2025/reducing-memory-footprint-visualvm/" rel="alternate" type="text/html" title="Reducing memory footprint by 6x — a VisualVM deep dive" /><published>2025-01-15T00:00:00+02:00</published><updated>2025-01-15T00:00:00+02:00</updated><id>http://localhost:4000/writing/2025/reducing-memory-footprint-visualvm</id><content type="html" xml:base="http://localhost:4000/writing/2025/reducing-memory-footprint-visualvm/"><![CDATA[<p>A service that had passed all performance tests in CI was quietly consuming 6× more heap than it needed in production. This is how we found it and fixed it.</p>
+
+<h2 id="the-symptom">The symptom</h2>
+
+<p>Our team noticed that one of the Nexus Dashboard backend services was being OOM-killed in production roughly once a week. The JVM was configured with a 2 GB heap limit — reasonable for the workload — but heap utilisation would creep up steadily until the GC couldn’t keep pace.</p>
+
+<p>The service handled aggregation queries over OpenSearch, transforming raw search results into structured analytics payloads for the React frontend. On paper, nothing in that description should produce an unbounded memory leak.</p>
+
+<h2 id="setting-up-visualvm">Setting up VisualVM</h2>
+
+<p>VisualVM is bundled with the JDK but often overlooked in favour of paid APM tools. For a targeted heap investigation, it’s more than sufficient.</p>
+
+<p>Connect it to the running process via JMX — add these flags to your JVM startup:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>-Dcom.sun.management.jmxremote
+-Dcom.sun.management.jmxremote.port=9010
+-Dcom.sun.management.jmxremote.authenticate=false
+-Dcom.sun.management.jmxremote.ssl=false
+</code></pre></div></div>
+
+<p>Then open VisualVM, connect to the remote host, and navigate to the <strong>Sampler</strong> tab.</p>
+
+<h2 id="what-the-heap-dump-revealed">What the heap dump revealed</h2>
+
+<p>After triggering a heap dump mid-load-test, the first thing that stood out in the object histogram was <code class="language-plaintext highlighter-rouge">byte[]</code> instances accounting for nearly 40% of retained heap. That alone isn’t unusual — String internals are byte arrays. But the count was orders of magnitude higher than the number of active requests.</p>
+
+<p>Drilling into the reference chains pointed to our response serialisation layer. We were using Jackson to serialise large OpenSearch result sets, and somewhere in the pipeline a <code class="language-plaintext highlighter-rouge">ByteArrayOutputStream</code> was being created <em>per result document</em> rather than per request, and none of them were being pooled.</p>
+
+<p>The culprit: a utility method deep in a shared library that called <code class="language-plaintext highlighter-rouge">objectMapper.writeValueAsBytes(doc)</code> in a loop, accumulating byte arrays that weren’t collected until the entire request completed.</p>
+
+<h2 id="the-fix">The fix</h2>
+
+<p>The fix was straightforward once located: replace the per-document serialisation with a single streaming write using <code class="language-plaintext highlighter-rouge">ObjectMapper.writer().writeValues(outputStream)</code>. This reduced peak heap allocation for a typical aggregation request from ~180 MB to ~28 MB.</p>
+
+<p>Across the service fleet, sustained heap utilisation dropped by roughly 6×, and the OOM-kills stopped.</p>
+
+<h2 id="lessons">Lessons</h2>
+
+<ul>
+  <li><strong>Profile before you optimise.</strong> The leak was in a shared utility — nobody would have found it without tooling.</li>
+  <li><strong>Heap histograms are fast.</strong> You don’t always need a full heap dump. A live histogram in VisualVM takes seconds and often points directly at the problem class.</li>
+  <li><strong>Streaming serialisation is almost always better.</strong> If you’re handling lists of documents, write them as a stream rather than materialising the whole payload in memory.</li>
+</ul>]]></content><author><name>Andrei Mihaescu</name><email>andrei.mihaescu91@gmail.com</email></author><category term="System Design" /><summary type="html"><![CDATA[How profiling an apparently healthy Java service revealed surprising heap allocations, and the systematic approach we took to cut resource usage dramatically.]]></summary></entry></feed>

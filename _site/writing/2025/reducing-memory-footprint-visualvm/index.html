@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reducing memory footprint by 6x — a VisualVM deep dive — Andrei Mihaescu</title>
+<meta name="description" content="How profiling an apparently healthy Java service revealed surprising heap allocations, and the systematic approach we took to cut resource usage dramatically.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="/assets/css/main.css">
+<!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>Reducing memory footprint by 6x — a VisualVM deep dive | Andrei Mihaescu</title>
+<meta name="generator" content="Jekyll v3.10.0" />
+<meta property="og:title" content="Reducing memory footprint by 6x — a VisualVM deep dive" />
+<meta name="author" content="Andrei Mihaescu" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="How profiling an apparently healthy Java service revealed surprising heap allocations, and the systematic approach we took to cut resource usage dramatically." />
+<meta property="og:description" content="How profiling an apparently healthy Java service revealed surprising heap allocations, and the systematic approach we took to cut resource usage dramatically." />
+<link rel="canonical" href="http://localhost:4000/writing/2025/reducing-memory-footprint-visualvm/" />
+<meta property="og:url" content="http://localhost:4000/writing/2025/reducing-memory-footprint-visualvm/" />
+<meta property="og:site_name" content="Andrei Mihaescu" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2025-01-15T00:00:00+02:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="Reducing memory footprint by 6x — a VisualVM deep dive" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Andrei Mihaescu"},"dateModified":"2025-01-15T00:00:00+02:00","datePublished":"2025-01-15T00:00:00+02:00","description":"How profiling an apparently healthy Java service revealed surprising heap allocations, and the systematic approach we took to cut resource usage dramatically.","headline":"Reducing memory footprint by 6x — a VisualVM deep dive","mainEntityOfPage":{"@type":"WebPage","@id":"http://localhost:4000/writing/2025/reducing-memory-footprint-visualvm/"},"url":"http://localhost:4000/writing/2025/reducing-memory-footprint-visualvm/"}</script>
+<!-- End Jekyll SEO tag -->
+
+
+</head>
+<body>
+  <nav>
+  <a href="/" class="nav-brand">Andrei Mihaescu</a>
+  <ul class="nav-links">
+    <li><a href="/#about" >About</a></li>
+    <li><a href="/#experience">Experience</a></li>
+    <li><a href="/writing/" class="active">Writing</a></li>
+    <li><a href="/#education">Education</a></li>
+    <li><a href="/#contact">Contact</a></li>
+  </ul>
+</nav>
+  <article class="post-container">
+
+  <header class="post-header">
+    <span class="post-category">System Design</span>
+    <h1>Reducing memory footprint by 6x — a VisualVM deep dive</h1>
+    <div class="post-meta">
+      <span>January 15, 2025</span>
+      <span>8 min read</span>
+    </div>
+  </header>
+
+  <div class="post-body">
+    <p>A service that had passed all performance tests in CI was quietly consuming 6× more heap than it needed in production. This is how we found it and fixed it.</p>
+
+<h2 id="the-symptom">The symptom</h2>
+
+<p>Our team noticed that one of the Nexus Dashboard backend services was being OOM-killed in production roughly once a week. The JVM was configured with a 2 GB heap limit — reasonable for the workload — but heap utilisation would creep up steadily until the GC couldn’t keep pace.</p>
+
+<p>The service handled aggregation queries over OpenSearch, transforming raw search results into structured analytics payloads for the React frontend. On paper, nothing in that description should produce an unbounded memory leak.</p>
+
+<h2 id="setting-up-visualvm">Setting up VisualVM</h2>
+
+<p>VisualVM is bundled with the JDK but often overlooked in favour of paid APM tools. For a targeted heap investigation, it’s more than sufficient.</p>
+
+<p>Connect it to the running process via JMX — add these flags to your JVM startup:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>-Dcom.sun.management.jmxremote
+-Dcom.sun.management.jmxremote.port=9010
+-Dcom.sun.management.jmxremote.authenticate=false
+-Dcom.sun.management.jmxremote.ssl=false
+</code></pre></div></div>
+
+<p>Then open VisualVM, connect to the remote host, and navigate to the <strong>Sampler</strong> tab.</p>
+
+<h2 id="what-the-heap-dump-revealed">What the heap dump revealed</h2>
+
+<p>After triggering a heap dump mid-load-test, the first thing that stood out in the object histogram was <code class="language-plaintext highlighter-rouge">byte[]</code> instances accounting for nearly 40% of retained heap. That alone isn’t unusual — String internals are byte arrays. But the count was orders of magnitude higher than the number of active requests.</p>
+
+<p>Drilling into the reference chains pointed to our response serialisation layer. We were using Jackson to serialise large OpenSearch result sets, and somewhere in the pipeline a <code class="language-plaintext highlighter-rouge">ByteArrayOutputStream</code> was being created <em>per result document</em> rather than per request, and none of them were being pooled.</p>
+
+<p>The culprit: a utility method deep in a shared library that called <code class="language-plaintext highlighter-rouge">objectMapper.writeValueAsBytes(doc)</code> in a loop, accumulating byte arrays that weren’t collected until the entire request completed.</p>
+
+<h2 id="the-fix">The fix</h2>
+
+<p>The fix was straightforward once located: replace the per-document serialisation with a single streaming write using <code class="language-plaintext highlighter-rouge">ObjectMapper.writer().writeValues(outputStream)</code>. This reduced peak heap allocation for a typical aggregation request from ~180 MB to ~28 MB.</p>
+
+<p>Across the service fleet, sustained heap utilisation dropped by roughly 6×, and the OOM-kills stopped.</p>
+
+<h2 id="lessons">Lessons</h2>
+
+<ul>
+  <li><strong>Profile before you optimise.</strong> The leak was in a shared utility — nobody would have found it without tooling.</li>
+  <li><strong>Heap histograms are fast.</strong> You don’t always need a full heap dump. A live histogram in VisualVM takes seconds and often points directly at the problem class.</li>
+  <li><strong>Streaming serialisation is almost always better.</strong> If you’re handling lists of documents, write them as a stream rather than materialising the whole payload in memory.</li>
+</ul>
+
+  </div>
+
+  <nav class="post-nav">
+    <div>
+      
+    </div>
+    <div style="text-align: right;">
+      
+        <span class="post-nav-label">Next →</span>
+        <a href="/writing/2025/async-first-collaboration/">Async-first collaboration across time zones — what actually works</a>
+      
+    </div>
+  </nav>
+
+</article>
+
+  <footer class="site-footer">
+  <span class="footer-copy">&copy; 2026 Andrei Mihaescu</span>
+  <span class="footer-tag">Staff Software Engineer &middot; Bucharest, RO</span>
+</footer>
+
+</body>
+</html>
