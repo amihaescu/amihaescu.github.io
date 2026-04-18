@@ -1,6 +1,6 @@
 title: Andrei Mihaescu
 description: Staff Software Engineer — full-stack, distributed systems, cloud-native
-url: "https://yourusername.github.io"
+url: "https://amihaescu.github.io"
 baseurl: ""
 
 author:
@@ -8,8 +8,8 @@ author:
   email: andrei.mihaescu91@gmail.com
   phone: "+40721535105"
   location: Bucharest, Romania
-  linkedin: andrei-mihaescu
-  github: andrei-mihaescu
+  linkedin: andreimihaescu
+  github: amihaescu
 
 # Build
 markdown: kramdown
