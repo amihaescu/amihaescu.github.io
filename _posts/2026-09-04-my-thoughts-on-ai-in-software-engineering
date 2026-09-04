@@ -7,4 +7,25 @@ excerpt: "As AI is now the defacto way of writting code, what's the added value 
 read_time: 6
 ---
 
+## State of the art 
+
+There is no denying that frontier LLMs are disrupting and stirring up a lot of controversy around white collar jobs. One of the domain that seems to receive a lot of attention
+is software engineering which, for a long time has been a very appealing domain: high salaries, an abundance of opportunities, status etc. Nowadays, however these jobs are under 
+attack. 
+
+A few years ago in one of his talks Rober C. Martin, uncle Bob - someone I really look up to, if you don't know him yet, look him up - stated something similar to Moore's Law: 
+the number of software engineers is doubling every five years, which means that at every given moment half of the software engineers have less than 5 years of experience. I absolutely
+loved this, however just like Moore's actual Law, this has followed suit - were no longer exponentailly adding transistors to a chip and the number of software engineers is no longer
+doubling every five years. 
+
+I read a lof of articles online and - maybe I'm biased because I am a software engineer - I keep getting a sense than people are actually happy that software engineers roles are nose diving
+and that people are loosing their jobs. For some reason non-software engineers feel like there was some kind of gate-keeping preventing them for penetrating the domain. I am deeply
+saddedned by this, as I am a self-taught software engineer. Most of the stuff that I learnt, and continue learning, is via free, community based resources. And how amazing that is!
+Youtube is full of resources for learning CS, architecture, etc. You just need to put it the time to do it. 
+
+## What does a software engineer do?
+
+If you check online articles, you see a bunch of people with fancy titles: Principal Engineer, Staff Engineer, Technical Lead, Evangelist, Arhitect and the list goes on. They are all
+some kind of software engineers. The main difference is their experience and respo
+
 
